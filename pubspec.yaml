@@ -1,0 +1,37 @@
+name: cs_framework
+description: 通用 Client-Server 基础架构 Flutter SDK。提供配置下发、业务数据存储、用户认证、文件存储、推送通知能力。
+version: 1.0.0
+homepage: https://github.com/your-org/cs_framework
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Supabase 官方 Flutter SDK
+  supabase_flutter: ^2.0.0
+  # 本地持久化缓存 (L2)
+  hive_flutter: ^1.1.0
+  # 路径工具
+  path_provider: ^2.1.0
+  # Firebase 推送（可选，不需要推送时可移除）
+  firebase_core: ^3.0.0
+  firebase_messaging: ^15.0.0
+  # 设备信息（生成 device_id）
+  device_info_plus: ^10.0.0
+  # 包信息（获取 app_version）
+  package_info_plus: ^8.0.0
+  # UUID 生成
+  uuid: ^4.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.0
+
+flutter:
+  assets:
+    - assets/default_configs.json
