@@ -79,6 +79,7 @@ cs-admin MCP 共 17 个工具，Cursor 中可直接调用：
 读取优先级：L1 内存（TTL 24h）→ L2 Hive（持久化）→ L3 Supabase → Bundled Defaults
 写入：所有层同时写
 失效：服务端 version 变化时触发增量同步
+注意：forceRefresh() 和 switchEnvironment() 会同时清空 L1+L2，确保环境隔离
 ```
 
 ### 环境管理
@@ -94,6 +95,16 @@ cs-admin MCP 共 17 个工具，Cursor 中可直接调用：
 2. `main.dart` 调用 `CsClient.initialize(appId: 'your-app')`
 3. 让 AI 执行：`register_app(app_id: 'your-app')`
 4. 用 MCP 工具初始化配置数据
+
+---
+
+## Supabase 官方 MCP
+
+已接入，project_ref: `ljmkxoptnzimpompabsq`，支持 DDL 操作（cs-admin MCP 没有的能力）：
+- `execute_sql` — 执行任意 SQL（建表、改 schema）
+- `list_tables` — 查看所有表结构，调用时指定 `schemas: ["public","business"]`
+- `apply_migration` — 管理 schema 迁移
+- `get_logs` / `get_advisors` — 日志和安全建议
 
 ---
 
@@ -187,3 +198,5 @@ cs_framework:
 2. **Supabase Realtime 未开启**：Table Editor → `app_configs` 表 → 开启 Realtime
 3. **Firebase 未配置时**：`enablePushNotifications: false`，否则崩溃
 4. **MCP Server 默认环境**：工具默认 `dev`，操作 prod 需显式指定或用 `promote_to_prod`
+5. **upload_image MCP 不可用**：cs-admin 的 upload_image 工具在 Railway 远端运行，无法读取本地文件路径。workaround：用 Python 脚本 + service_role_key（在 `cs_infra/mcp-server/.env`）直接调 Supabase Storage REST API 上传，格式：`POST {SUPABASE_URL}/storage/v1/object/configs/{app_id}/{filename}`，Header 加 `Authorization: Bearer {SERVICE_KEY}` 和 `x-upsert: true`
+6. **Riverpod 环境切换监听**：ConsumerStatefulWidget 中 `didChangeDependencies` 不会因 Riverpod provider 变化而触发，必须用 `ref.listen()` 在 `build()` 中监听：`ref.listen<CsEnvironment>(environmentProvider, (prev, next) { if (prev != next) _loadConfigs(); });`
