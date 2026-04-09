@@ -39,7 +39,7 @@ class CsClient {
   static bool _initialized = false;
 
   static CsConfig get config {
-    assert(_initialized, 'CsClient.initialize() 未调用');
+    assert(_config != null, 'CsClient.initialize() 未调用');
     return _config!;
   }
 
@@ -98,6 +98,27 @@ class CsClient {
 
     if (kDebugMode) {
       debugPrint('[CsClient] 初始化完成 appId=$appId env=${environment.name}');
+    }
+  }
+
+  /// 运行时切换环境（dev ↔ prod），会清空本地缓存并重新同步
+  static Future<void> switchEnvironment(CsEnvironment environment) async {
+    if (_config == null) return;
+    if (_config!.environment == environment) return;
+
+    _config = CsConfig(
+      supabaseUrl: _config!.supabaseUrl,
+      supabaseAnonKey: _config!.supabaseAnonKey,
+      appId: _config!.appId,
+      environment: environment,
+      locale: _config!.locale,
+    );
+
+    // 清空缓存，重新从新环境拉取
+    await ConfigManager.forceRefresh();
+
+    if (kDebugMode) {
+      debugPrint('[CsClient] 环境已切换为 ${environment.name}');
     }
   }
 
