@@ -23,7 +23,16 @@ class PushManager {
   static void Function(RemoteMessage message)? onNotificationTap;
 
   static Future<void> initialize() async {
-    // 请求通知权限
+    // 请求通知权限（如果 Firebase 未初始化则跳过）
+    try {
+      _fcm.app; // 触发 FirebaseApp 是否已初始化的检查
+    } catch (_) {
+      if (kDebugMode) {
+        debugPrint('[PushManager] Firebase 未初始化，跳过推送注册');
+      }
+      return;
+    }
+
     final settings = await _fcm.requestPermission(
       alert: true,
       badge: true,

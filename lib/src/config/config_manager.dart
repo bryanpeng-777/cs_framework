@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -59,10 +60,16 @@ class ConfigManager {
     await _loadBundledDefaults();
 
     // 启动增量同步（后台，不阻塞 UI）
-    _syncInBackground();
+    _syncInBackground().catchError((e) {
+      if (kDebugMode) debugPrint('[ConfigManager] 后台同步异常: $e');
+    });
 
     // 启动 Realtime 监听（前台实时推送）
-    _subscribeRealtime();
+    try {
+      _subscribeRealtime();
+    } catch (e) {
+      if (kDebugMode) debugPrint('[ConfigManager] Realtime 订阅异常: $e');
+    }
 
     // 监听 App 生命周期（回前台时触发增量同步）
     WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
@@ -142,6 +149,8 @@ class ConfigManager {
   /// 强制刷新（跳过缓存，直接从 Supabase 拉取）
   static Future<void> forceRefresh() async {
     _memoryCache.clear();
+    await _hiveBox?.clear();
+    if (kDebugMode) debugPrint('[ConfigManager] forceRefresh: L1+L2 缓存已全部清空');
     await _fullSync();
   }
 

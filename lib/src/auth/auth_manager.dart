@@ -32,7 +32,14 @@ class AuthManager {
 
     // 如果未登录，自动匿名登录
     if (currentUser == null) {
-      await signInAnonymously();
+      try {
+        await signInAnonymously();
+      } catch (e) {
+        // 匿名登录失败时不阻塞启动（未开启匿名登录、无网络等场景）
+        if (kDebugMode) {
+          debugPrint('[AuthManager] 匿名登录失败（可在 Supabase Dashboard 开启匿名登录）: $e');
+        }
+      }
     }
 
     _initialized = true;

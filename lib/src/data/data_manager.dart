@@ -61,31 +61,33 @@ class DataManager {
     int? limit,
     int? offset,
   }) async {
-    var query = _supabase
+    // 先构建 filter 阶段的查询
+    var filterQuery = _supabase
         .schema('business')
         .from(table)
         .select(columns ?? '*');
 
     if (filters != null) {
       for (final entry in filters.entries) {
-        query = query.eq(entry.key, entry.value);
+        filterQuery = filterQuery.eq(entry.key, entry.value);
       }
     }
 
+    // 进入 transform 阶段（order/limit/range 返回不同类型，用 dynamic 承接）
+    dynamic q = filterQuery;
+
     if (orderBy != null) {
-      query = query.order(orderBy, ascending: ascending);
+      q = (q as dynamic).order(orderBy, ascending: ascending);
     }
-
     if (limit != null) {
-      query = query.limit(limit);
+      q = (q as dynamic).limit(limit);
     }
-
     if (offset != null) {
-      query = query.range(offset, offset + (limit ?? 20) - 1);
+      q = (q as dynamic).range(offset, offset + (limit ?? 20) - 1);
     }
 
-    final result = await query;
-    return List<Map<String, dynamic>>.from(result);
+    final result = await (q as dynamic);
+    return List<Map<String, dynamic>>.from(result as List);
   }
 
   /// 查询单条记录
@@ -121,12 +123,12 @@ class DataManager {
 
     if (match != null) {
       for (final entry in match.entries) {
-        query = query.eq(entry.key, entry.value);
+        query = query.eq(entry.key, entry.value) as dynamic;
       }
     }
 
-    final result = await query.select();
-    return List<Map<String, dynamic>>.from(result);
+    final result = await (query as dynamic).select();
+    return List<Map<String, dynamic>>.from(result as List);
   }
 
   /// 插入或更新（upsert）
@@ -168,8 +170,7 @@ class DataManager {
     var query = _supabase
         .schema('business')
         .from(table)
-        .select()
-        .count(CountOption.exact);
+        .select();
 
     if (filters != null) {
       for (final entry in filters.entries) {
@@ -177,7 +178,7 @@ class DataManager {
       }
     }
 
-    final result = await query;
+    final result = await query.count(CountOption.exact);
     return result.count;
   }
 
