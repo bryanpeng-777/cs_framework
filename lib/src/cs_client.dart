@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'auth/auth_manager.dart';
 import 'config/config_manager.dart';
@@ -91,7 +92,14 @@ class CsClient {
     await StorageManager.initialize();
 
     if (enablePushNotifications) {
-      await PushManager.initialize();
+      try {
+        await Firebase.initializeApp();
+        await PushManager.initialize();
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[CsClient] Firebase 初始化失败，跳过推送注册: $e');
+        }
+      }
     }
 
     _initialized = true;
