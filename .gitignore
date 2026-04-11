@@ -3,3 +3,6 @@
 .flutter-plugins-dependencies
 pubspec.lock
 build/
+
+# 本地开发 path override，不提交
+pubspec_overrides.yaml

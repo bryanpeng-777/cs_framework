@@ -11,8 +11,9 @@
 ## 仓库结构
 
 ```
-work3/cursorAGIProject/cs/
+/Users/pengchao/cursorBiz/          ← 本地大仓工作区（非 git repo）
 ├── cs_framework/     ← Flutter SDK（GitHub: bryanpeng-777/cs_framework）
+├── cs_ui/            ← 视觉主题包（GitHub: bryanpeng-777/cs_ui）
 └── cs_infra/         ← 基础设施（GitHub: bryanpeng-777/cs_infra）
     ├── supabase/migrations/   ← 数据库迁移脚本
     ├── mcp-server/            ← MCP Server（部署在 Railway）
