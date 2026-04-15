@@ -31,5 +31,6 @@ export 'src/config/config_manager.dart' show ConfigManager;
 export 'src/config/config_models.dart' show ConfigChangeEvent;
 export 'src/data/data_manager.dart' show DataManager;
 export 'src/auth/auth_manager.dart' show AuthManager;
+export 'src/auth/auth_guard.dart' show AuthGuard;
 export 'src/storage/storage_manager.dart' show StorageManager;
 export 'src/notifications/push_manager.dart' show PushManager;

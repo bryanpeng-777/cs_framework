@@ -20,15 +20,23 @@ class CsConfig {
   final CsEnvironment environment;
   final String locale;
 
+  /// App 的 URL Scheme，用于密码重置深链接唤起
+  /// 命名规则：mountain + appId（全小写），例如 appId=demo → mountaindemo
+  final String urlScheme;
+
   const CsConfig({
     required this.supabaseUrl,
     required this.supabaseAnonKey,
     required this.appId,
     this.environment = CsEnvironment.prod,
     this.locale = 'all',
-  });
+    String? urlScheme,
+  }) : urlScheme = urlScheme ?? 'mountain$appId';
 
   String get environmentName => environment.name;
+
+  /// 密码重置后的深链接回调地址
+  String get passwordResetRedirectUrl => '$urlScheme://reset-password';
 }
 
 /// cs_framework 主入口
@@ -65,6 +73,7 @@ class CsClient {
     CsEnvironment environment = CsEnvironment.prod,
     String locale = 'all',
     bool enablePushNotifications = true,
+    String? urlScheme,
   }) async {
     if (_initialized) return;
 
@@ -74,18 +83,24 @@ class CsClient {
       appId: appId,
       environment: environment,
       locale: locale,
+      urlScheme: urlScheme,
     );
 
     // 初始化 Hive 本地缓存
     await Hive.initFlutter();
 
-    // 初始化 Supabase
+    // 初始化 Supabase（启用 PKCE 以支持密码重置深链接）
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,
+      ),
     );
 
     // 初始化各子模块（顺序不可颠倒）
+    // AuthManager 只恢复已有 session，不自动创建匿名账号
+    // 匿名登录由用户在登录页主动点「跳过」触发
     await AuthManager.initialize();
     await ConfigManager.initialize();
     await DataManager.initialize();

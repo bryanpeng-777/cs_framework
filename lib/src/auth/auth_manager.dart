@@ -7,7 +7,16 @@ import 'dart:io';
 import '../cs_client.dart';
 
 /// 用户认证管理器
-/// 支持匿名登录、邮箱登录、Apple/Google 登录、账号升级
+///
+/// 支持的登录方式：
+/// - 匿名登录（用户主动选择「跳过」时调用）
+/// - 邮箱密码注册 / 登录
+/// - 匿名账号升级为邮箱账号（保留历史数据）
+/// - 退出登录
+/// - 密码重置（邮件 + URL Scheme 深链接）
+///
+/// 预留接口（Phase 2）：
+/// - signInWithThirdParty：微信 / QQ 等三方登录
 class AuthManager {
   AuthManager._();
 
@@ -27,40 +36,44 @@ class AuthManager {
   /// 是否为匿名用户
   static bool get isAnonymous => currentUser?.isAnonymous ?? false;
 
+  /// 是否为已绑定邮箱的正式用户
+  static bool get isEmailUser => isLoggedIn && !isAnonymous;
+
+  /// 初始化：仅尝试恢复已有 session，不自动创建匿名账号
+  ///
+  /// 匿名登录由用户在 CsLoginPage 主动点「跳过」触发。
   static Future<void> initialize() async {
     if (_initialized) return;
-
-    // 如果未登录，自动匿名登录
-    if (currentUser == null) {
-      try {
-        await signInAnonymously();
-      } catch (e) {
-        // 匿名登录失败时不阻塞启动（未开启匿名登录、无网络等场景）
-        if (kDebugMode) {
-          debugPrint('[AuthManager] 匿名登录失败（可在 Supabase Dashboard 开启匿名登录）: $e');
-        }
-      }
-    }
-
     _initialized = true;
+
     if (kDebugMode) {
-      debugPrint('[AuthManager] 初始化完成 userId=${currentUserId ?? 'none'}');
+      debugPrint(
+        '[AuthManager] 初始化完成 '
+        'userId=${currentUserId ?? 'none'} '
+        'isAnonymous=$isAnonymous',
+      );
     }
   }
 
-  /// 匿名登录（首次使用时自动调用）
+  // ---------------------------------------------------------------------------
+  // 匿名登录
+  // ---------------------------------------------------------------------------
+
+  /// 匿名登录（用户在登录页点「跳过」时调用）
   static Future<AuthResponse> signInAnonymously() async {
     final response = await _supabase.auth.signInAnonymously();
-
     if (response.user != null) {
       await _upsertBusinessUser(response.user!);
     }
-
     if (kDebugMode) {
       debugPrint('[AuthManager] 匿名登录成功 userId=${response.user?.id}');
     }
     return response;
   }
+
+  // ---------------------------------------------------------------------------
+  // 邮箱注册 / 登录
+  // ---------------------------------------------------------------------------
 
   /// 邮箱密码注册
   static Future<AuthResponse> signUpWithEmail(
@@ -92,8 +105,14 @@ class AuthManager {
     return response;
   }
 
+  // ---------------------------------------------------------------------------
+  // 匿名账号升级
+  // ---------------------------------------------------------------------------
+
   /// 将匿名账号升级为邮箱账号（保留历史数据）
-  /// 调用此方法后 userId 不变，所有历史数据自动保留
+  ///
+  /// 调用此方法后 userId 不变，所有历史数据自动保留。
+  /// 适合用户在使用过程中选择「绑定账号」的场景。
   static Future<UserResponse> linkWithEmail(
     String email,
     String password,
@@ -107,10 +126,66 @@ class AuthManager {
     return response;
   }
 
-  /// 退出登录
+  // ---------------------------------------------------------------------------
+  // 密码重置
+  // ---------------------------------------------------------------------------
+
+  /// 发送密码重置邮件
+  ///
+  /// 用户点击邮件链接后，操作系统通过 URL Scheme 唤起 App，
+  /// 框架自动建立临时 session，App 跳转到「设置新密码」页。
+  static Future<void> sendPasswordResetEmail(String email) async {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: CsClient.config.passwordResetRedirectUrl,
+    );
+    if (kDebugMode) {
+      debugPrint('[AuthManager] 密码重置邮件已发送 email=$email');
+    }
+  }
+
+  /// 设置新密码（用户通过深链接唤起 App 后调用）
+  ///
+  /// 调用前 supabase_flutter 已通过深链接自动建立了临时 session。
+  static Future<UserResponse> updatePassword(String newPassword) async {
+    return _supabase.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 退出登录
+  // ---------------------------------------------------------------------------
+
+  /// 退出登录，退出后 session 清空，App 应跳转到登录页
   static Future<void> signOut() async {
     await _supabase.auth.signOut();
+    if (kDebugMode) {
+      debugPrint('[AuthManager] 已退出登录');
+    }
   }
+
+  // ---------------------------------------------------------------------------
+  // 三方登录（Phase 2 预留接口）
+  // ---------------------------------------------------------------------------
+
+  /// 三方登录预留接口（微信 / QQ 等）
+  ///
+  /// Phase 2 实现时，[provider] 可为 'wechat' / 'qq' 等，
+  /// [token] 为对应 SDK 返回的 auth code 或 access token。
+  /// 需配合后端 Edge Function 将三方 token 换成 Supabase session。
+  static Future<void> signInWithThirdParty({
+    required String provider,
+    required String token,
+  }) async {
+    throw UnimplementedError(
+      'signInWithThirdParty($provider) 将在 Phase 2 实现。',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 工具方法
+  // ---------------------------------------------------------------------------
 
   /// 监听认证状态变化
   static Stream<AuthState> get authStateChanges =>
