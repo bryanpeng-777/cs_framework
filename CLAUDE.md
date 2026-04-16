@@ -201,3 +201,6 @@ cs_framework:
 4. **MCP Server 默认环境**：工具默认 `dev`，操作 prod 需显式指定或用 `promote_to_prod`
 5. **upload_image MCP 不可用**：cs-admin 的 upload_image 工具在 Railway 远端运行，无法读取本地文件路径。workaround：用 Python 脚本 + service_role_key（在 `cs_infra/mcp-server/.env`）直接调 Supabase Storage REST API 上传，格式：`POST {SUPABASE_URL}/storage/v1/object/configs/{app_id}/{filename}`，Header 加 `Authorization: Bearer {SERVICE_KEY}` 和 `x-upsert: true`
 6. **Riverpod 环境切换监听**：ConsumerStatefulWidget 中 `didChangeDependencies` 不会因 Riverpod provider 变化而触发，必须用 `ref.listen()` 在 `build()` 中监听：`ref.listen<CsEnvironment>(environmentProvider, (prev, next) { if (prev != next) _loadConfigs(); });`
+7. **business.users upsert 写法**：`.from('business.users')` 在 Dart SDK 中静默失败（把字符串当 public schema 下的表名处理），必须用 `.schema('business').from('users')`。写入后立即用 `execute_sql` 查行数验证
+8. **auth → business.users 自动同步**：新 App 接入后 `business.users` 默认无触发器，新用户注册后不会自动同步，导致有 `user_id` 外键的表 INSERT 报 23503（foreign key violation）。修复：用 Supabase MCP `apply_migration` 创建 `on_auth_user_created` 触发器，存量用户用 `execute_sql` 补填
+9. **ShadToaster 必须在 MaterialApp.builder 中注入**：使用 `ShadApp.custom` 时 `ShadToaster` 不自动包含，需在 `MaterialApp.builder` 中手动包裹 `ShadToaster(child: child)`，否则子页面调用 `ShadToaster.of(context)` 会抛 `Could not find ShadToaster InheritedWidget` 异常
