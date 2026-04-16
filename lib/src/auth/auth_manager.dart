@@ -209,7 +209,7 @@ class AuthManager {
   /// 在 business.users 表中同步用户记录
   static Future<void> _upsertBusinessUser(User user) async {
     try {
-      await _supabase.from('business.users').upsert({
+      await _supabase.schema('business').from('users').upsert({
         'id': user.id,
         'app_id': CsClient.config.appId,
         'updated_at': DateTime.now().toIso8601String(),
